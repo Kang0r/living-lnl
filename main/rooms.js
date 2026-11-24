@@ -50,11 +50,9 @@ export const ROOMS = [
 ];
 
 const byId = Object.fromEntries(ROOMS.map((r) => [r.id, r]));
-let tagLayer = null;
 let panel = null;
-const tags = new Map();
 
-// 화면(CSS px) 좌표에 있는 방 id
+// 화면(CSS px) 좌표에 있는 공용 공간 id (두 동 아래 저층부)
 export function roomAt(x, y) {
   const lx = x / view.px - view.bx;
   const ly = y / view.px - view.by;
@@ -62,11 +60,12 @@ export function roomAt(x, y) {
   return z ? z.room : null;
 }
 
-// 방 이름표(키보드로도 누를 수 있는 버튼)와 앱 고르기 패널을 붙인다
-export function mountRooms(layer, dialog, { onHover } = {}) {
-  tagLayer = layer;
+// 공용 공간 버튼 줄(키보드로도 누를 수 있음)과 앱 고르기 패널을 붙인다.
+// 버튼 순서는 저층부 왼쪽부터 오른쪽 순서와 같다.
+export function mountRooms(bar, dialog, { onHover } = {}) {
   panel = dialog;
-  for (const room of ROOMS) {
+  for (const z of ZONES) {
+    const room = byId[z.room];
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'room-tag';
@@ -78,40 +77,10 @@ export function mountRooms(layer, dialog, { onHover } = {}) {
     btn.addEventListener('pointerleave', () => onHover && onHover(null));
     btn.addEventListener('focus', () => onHover && onHover(room.id));
     btn.addEventListener('blur', () => onHover && onHover(null));
-    layer.appendChild(btn);
-    tags.set(room.id, btn);
+    bar.appendChild(btn);
   }
   if (panel) {
     panel.addEventListener('click', (e) => { if (e.target === panel) closePanel(); });
-  }
-  layoutRooms();
-}
-
-// 화면 크기가 바뀌면 이름표 위치를 다시 잡는다
-// 넓은 화면: 건물 바깥에 층 높이 가운데로 / 좁은 휴대폰: 건물 안 층 경계선 위에 작게
-export function layoutRooms() {
-  if (!tagLayer) return;
-  const { px, bx, by } = view;
-  const outside = bx * px >= 110;
-  for (const z of ZONES) {
-    const btn = tags.get(z.room);
-    if (!btn) continue;
-    let x;
-    let y;
-    let shift;
-    if (outside) {
-      const right = z.x > 40;
-      x = right ? (bx + z.x + z.w + 2) * px : (bx + z.x - 2) * px;
-      y = (by + z.y + z.h / 2) * px;
-      shift = right ? 'translateY(-50%)' : 'translate(-100%, -50%)';
-    } else {
-      x = (bx + z.x + 1) * px;
-      y = (by + z.y) * px;
-      shift = 'translateY(-50%)';
-    }
-    // 건물 왼쪽에 붙는 이름표는 방 색 띠를 건물 쪽(오른쪽)에 둔다
-    btn.classList.toggle('room-tag--flip', outside && z.x <= 40);
-    btn.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) ${shift}`;
   }
 }
 

@@ -1,5 +1,6 @@
 // 창문 불빛·빛 입자 (담당: 백경동)
-// - 창문: 오늘(KST 0시 이후) 방별 기록 수 → 켜지는 창문 개수 = min(N, ceil(기록 수 / K))
+// - 호실 창문(919C·919D동): 관객이 자기 호실을 입력하면 그 방에 불이 켜진다 (dorms.js가 setDorm 호출)
+// - 공용 공간 창문: 오늘(KST 0시 이후) 방별 기록 수 → 켜지는 창문 개수 = min(N, ceil(기록 수 / K))
 // - 입자: 지금 접속한 사람 수만큼 금빛 입자가 소용돌이 궤적으로 떠다닌다 (최대 200개)
 import { WINDOWS, BUILDING, view, colors, mix, css, state as scene } from './scene.js';
 
@@ -33,6 +34,35 @@ export function litCount(room) {
   return Math.min(roomSize[room], Math.ceil(counts[room] / K));
 }
 
+// ── 호실 불빛 ──
+const dormIndex = new Map(); // 'C315' → 창문 번호
+WINDOWS.forEach((w, i) => { if (w.room === 'dorm') dormIndex.set(w.key, i); });
+const dormLit = new Set();
+const dormMine = new Set();
+
+function isLit(i) {
+  const w = WINDOWS[i];
+  return w.room === 'dorm' ? dormLit.has(w.key) : rank[i] < litCount(w.room);
+}
+
+// 호실 하나에 불을 켠다. flash: 반짝이며 켜기, mine: 이 기기에서 켠 방(테두리로 표시)
+export function setDorm(key, { flash = false, mine = false } = {}) {
+  const i = dormIndex.get(key);
+  if (i === undefined) return false;
+  const isNew = !dormLit.has(key);
+  dormLit.add(key);
+  if (mine) dormMine.add(key);
+  if (flash && (isNew || now() - flashAt[i] > 1.5)) flashWindow(i);
+  if (isNew) emitStats();
+  return true;
+}
+export function clearDorms() {
+  dormLit.clear();
+  dormMine.clear();
+  emitStats();
+}
+export const dormKeys = () => [...dormIndex.keys()];
+
 let climaxTarget = 0;
 let glow = 0;
 export function setClimax(on) {
@@ -61,10 +91,9 @@ export function addEvent(room) {
   emitStats();
 }
 
-// 기록 없이 창문만 반짝이게 (관객 '불 켜기')
+// 기록 없이 창문만 반짝이게 (관객 '불 켜기') — room을 주지 않으면 아무 창문이나
 export function flashRandom(room) {
-  const r = room || ROOM_IDS[Math.floor(Math.random() * ROOM_IDS.length)];
-  const i = pickWindow(r, false);
+  const i = room ? pickWindow(room, false) : Math.floor(Math.random() * WINDOWS.length);
   if (i >= 0) flashWindow(i);
 }
 
@@ -94,9 +123,9 @@ export function drawWindows(g) {
   // 1) 밤에는 켜진 창문 주위로 은은한 번짐
   if (night > 0.3 || glow > 0) {
     WINDOWS.forEach((w, i) => {
-      const lit = rank[i] < litCount(w.room);
+      const lit = isLit(i);
       if (!lit && glow <= 0) return;
-      const c = glow > 0 && !lit ? colors.goldLight : mix(colors.room[w.room], colors.goldLight, 0.55);
+      const c = glow > 0 && !lit ? colors.goldLight : mix(accent(w), colors.goldLight, 0.55);
       g.fillStyle = css(c, 0.16 * Math.max(night, glow) * (lit ? 1 : glow));
       g.fillRect(bx + w.x - 2, by + w.y - 2, w.w + 4, w.h + 4);
     });
@@ -104,11 +133,11 @@ export function drawWindows(g) {
 
   // 2) 창문 유리
   WINDOWS.forEach((w, i) => {
-    const lit = rank[i] < litCount(w.room);
+    const lit = isLit(i);
     const f = Math.max(0, 1 - (t - flashAt[i]) / 1.4);
     let c;
     if (lit) {
-      const litColor = mix(colors.room[w.room], colors.goldLight, 0.55);
+      const litColor = mix(accent(w), colors.goldLight, 0.55);
       c = mix(off, litColor, 0.7 + 0.3 * night);
     } else {
       c = off;
@@ -122,7 +151,7 @@ export function drawWindows(g) {
     g.fillRect(x, y, w.w, w.h);
     if (lit || glow > 0.5) {
       // 커튼과 창턱 그늘
-      g.fillStyle = css(mix(c, colors.room[w.room], 0.35));
+      g.fillStyle = css(mix(c, accent(w), 0.35));
       g.fillRect(x, y, Math.max(1, Math.floor(w.w / 4)), w.h);
       g.fillStyle = css(mix(c, colors.ink, 0.15));
       g.fillRect(x, y + w.h - 1, w.w, 1);
@@ -132,18 +161,31 @@ export function drawWindows(g) {
       g.fillRect(x + 1, y + 1, 2, 1);
       g.fillRect(x + 1, y + 2, 1, 1);
     }
+    // 이 기기에서 켠 내 방은 금빛 테두리가 숨쉬듯 빛난다
+    if (w.room === 'dorm' && dormMine.has(w.key)) {
+      g.fillStyle = css(colors.goldLight, 0.55 + 0.45 * Math.sin(t * 3));
+      g.fillRect(x - 2, y - 2, w.w + 4, 1);
+      g.fillRect(x - 2, y + w.h + 1, w.w + 4, 1);
+      g.fillRect(x - 2, y - 1, 1, w.h + 2);
+      g.fillRect(x + w.w + 1, y - 1, 1, w.h + 2);
+    }
   });
+}
+
+// 호실 창문은 금빛, 공용 공간 창문은 그 방의 색
+function accent(w) {
+  return w.room === 'dorm' ? colors.gold : colors.room[w.room];
 }
 
 // ── 빛 입자 ───────────────────────────────────────────
 // 소용돌이 중심들 (건물 기준 논리 좌표). 클림트의 소용돌이 문양처럼 서로 반대로 돈다.
 const VORTEX = [
-  { x: -12, y: 22, r: 13 },
-  { x: BUILDING.w + 6, y: 26, r: 14 },
-  { x: 40, y: -16, r: 18 },
-  { x: 12, y: -4, r: 10 },
-  { x: 74, y: 0, r: 11 },
-  { x: 40, y: 32, r: 24 },
+  { x: -14, y: 34, r: 13 },
+  { x: BUILDING.w + 12, y: 40, r: 14 },
+  { x: 44, y: -14, r: 18 },
+  { x: 20, y: -6, r: 10 },
+  { x: 68, y: -6, r: 10 },
+  { x: 44, y: 44, r: 30 },
 ];
 const parts = new Map();
 const sparks = [];
@@ -293,7 +335,7 @@ let presenceList = [];
 function emitStats() {
   if (!statsCb) return;
   const total = ROOM_IDS.reduce((a, r) => a + counts[r], 0);
-  statsCb({ counts: { ...counts }, total, people: presenceList.length, list: presenceList });
+  statsCb({ counts: { ...counts }, total, dorms: dormLit.size, people: presenceList.length, list: presenceList });
 }
 
 // options.meta: Presence에 실을 정보 (예: { page: 'main' })
@@ -305,7 +347,7 @@ export function startLights({ meta = { page: 'main' }, demoCrowd = 0, demoEvents
   const load = () => LNL.todayCounts().then((c) => {
     ROOM_IDS.forEach((r) => { counts[r] = c ? c[r] || 0 : 0; });
     if (!c && LNL.isDemo && demoEvents) {
-      ROOM_IDS.forEach((r) => { counts[r] = Math.floor(Math.random() * 13); });
+      ROOM_IDS.forEach((r) => { counts[r] = Math.floor(Math.random() * 5); });
     }
     emitStats();
   });

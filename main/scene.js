@@ -38,39 +38,70 @@ export function loadColors() {
 }
 
 // ── 건물 설계 (건물 왼쪽 위 기준 논리 픽셀) ──
-// 본관 폭 80 + 틈 3 + 분리수거장 별채 16 = 99
-export const BUILDING = { w: 99, h: 70 };
-const FLOOR_TOP = 12;
-const FLOOR_H = 11;
-const UPPER_FLOORS = ['wall', 'lounge', 'study', 'meetup']; // 위층부터
+// 919C동(왼쪽)과 919D동(오른쪽) 두 동, 각 1~9층, 층마다 방 4개가 나란히 있다.
+//   C동: 15·16·17·18호 / D동: 19·20·21·22호 → 3층 15호 = 'C315'
+// 두 동 아래를 잇는 저층부에 공용 공간 6곳(방 앱으로 들어가는 곳)이 있다.
+export const BUILDING = { w: 88, h: 100 };
+export const TOWERS = [
+  { dorm: 'C', x: 0, first: 15 },
+  { dorm: 'D', x: 47, first: 19 },
+];
+export const TOWER_W = 41;
+export const FLOORS = 9;
+const FLOOR_TOP = 12; // 9층 윗선
+const FLOOR_H = 8;
+const PODIUM_Y = 84;
+// 저층부 공용 공간 (왼쪽 셋은 C동 아래, 가운데 입구, 오른쪽 셋은 D동 아래)
+const FACILITIES = [
+  ['cafeteria', 1], ['meetup', 14], ['study', 27],
+  ['lounge', 48], ['wall', 61], ['recycle', 74],
+];
+const SECTION_W = 13;
+
+export const floorTop = (floor) => FLOOR_TOP + (FLOORS - floor) * FLOOR_H;
 
 // 창문 좌표. lights.js가 이 좌표로 불을 켠다. 형식: { room, x, y, w, h }
+// 호실 창문은 room: 'dorm' 이고 key('C315')·dorm·floor·num 을 더 가진다.
 export const WINDOWS = [];
-UPPER_FLOORS.forEach((room, f) => {
-  const top = FLOOR_TOP + f * FLOOR_H;
-  for (let i = 0; i < 6; i++) WINDOWS.push({ room, x: 6 + i * 12, y: top + 3, w: 8, h: 6 });
-});
-for (const x of [4, 14, 24, 48, 58, 68]) WINDOWS.push({ room: 'cafeteria', x, y: 60, w: 8, h: 7 });
-for (const x of [86, 93]) WINDOWS.push({ room: 'recycle', x, y: 62, w: 4, h: 4 });
+for (const t of TOWERS) {
+  for (let floor = 1; floor <= FLOORS; floor++) {
+    for (let i = 0; i < 4; i++) {
+      const num = t.first + i;
+      WINDOWS.push({
+        room: 'dorm', dorm: t.dorm, floor, num, key: `${t.dorm}${floor}${num}`,
+        x: t.x + 4 + i * 9, y: floorTop(floor) + 2, w: 6, h: 5,
+      });
+    }
+  }
+}
+for (const [room, sx] of FACILITIES) {
+  WINDOWS.push({ room, x: sx + 2, y: PODIUM_Y + 5, w: 4, h: 6 });
+  WINDOWS.push({ room, x: sx + 7, y: PODIUM_Y + 5, w: 4, h: 6 });
+}
 
-// 눌리는 영역 (rooms.js가 쓴다)
-export const ZONES = [
-  ...UPPER_FLOORS.map((room, f) => ({ room, x: 0, y: FLOOR_TOP + f * FLOOR_H, w: 80, h: FLOOR_H })),
-  { room: 'cafeteria', x: 0, y: 56, w: 80, h: 14 },
-  { room: 'recycle', x: 82, y: 56, w: 18, h: 14 },
-];
+// 눌리는 공용 공간 영역 (rooms.js가 쓴다)
+export const ZONES = FACILITIES.map(([room, sx]) => ({ room, x: sx, y: PODIUM_Y, w: SECTION_W, h: 16 }));
+
+// 화면(CSS px) 좌표에 있는 호실 창문 (없으면 null)
+export function dormWindowAt(x, y) {
+  const lx = x / view.px - view.bx;
+  const ly = y / view.px - view.by;
+  return WINDOWS.find((w) => w.room === 'dorm'
+    && lx >= w.x - 1 && lx < w.x + w.w + 1 && ly >= w.y - 1 && ly < w.y + w.h + 1) || null;
+}
 
 // ── 화면 배치 ──
 export const view = { px: 3, W: 120, H: 240, bx: 10, by: 130, groundY: 200, cssW: 360, cssH: 720 };
 
 export function resize(cssW, cssH) {
-  const px = Math.max(2, Math.floor(Math.min(cssW / (BUILDING.w + 16), cssH / (BUILDING.h + 60))));
+  const px = Math.max(2, Math.floor(Math.min(cssW / (BUILDING.w + 16), cssH / (BUILDING.h + 80))));
   view.px = px;
   view.cssW = cssW;
   view.cssH = cssH;
   view.W = Math.ceil(cssW / px);
   view.H = Math.ceil(cssH / px);
-  view.groundY = view.H - Math.max(16, Math.floor(view.H * 0.14));
+  // 아래쪽 땅에는 공용 공간 버튼과 '내 방 불 켜기' 버튼이 올라간다
+  view.groundY = view.H - Math.max(16, Math.floor(view.H * 0.2));
   view.bx = Math.floor((view.W - BUILDING.w) / 2);
   view.by = view.groundY - BUILDING.h;
   skyKey = '';
@@ -86,7 +117,8 @@ export function toScreen(x, y) {
 // ── 장면 상태 (다른 모듈이 읽고 쓴다) ──
 export const state = {
   weather: 'clear', // clear | cloudy | rain | snow
-  hover: null,      // 마우스가 올라간 방 id
+  hover: null,      // 마우스가 올라간 공용 공간 id
+  hoverKey: null,   // 마우스가 올라간 호실 key ('C315')
   glow: 0,          // 전체 점등 정도 0~1 (lights.js가 정한다)
   day: 0,           // 낮 밝기 0~1
   stars: 1,         // 별 보이는 정도 0~1
@@ -314,8 +346,7 @@ function buildingColors(day, glow) {
     lamp: css(mix(mix(c.paper, c.ink, 0.4), c.goldLight, 1 - day)),
     signBg: css(mix(c.night, c.ink, 0.3)),
     signText: css(mix(c.gold, c.goldLight, 1 - day)),
-    annex: css(g(mix(wall, c.room.recycle, 0.25))),
-    annexRoof: css(mix(c.room.recycle, c.night, 0.25 + (1 - day) * 0.35)),
+    floorNum: css(mix(mix(c.paper, c.night, 0.45), mix(c.ink, c.paper, 0.35), day)),
     grass: css(mix(mix(c.room.recycle, c.paper, state.weather === 'snow' ? 0.75 : 0.08), c.night, 0.78 - day * 0.78)),
     grassDark: css(mix(mix(c.room.recycle, c.ink, 0.3), c.night, 0.7 - day * 0.6)),
     path: css(mix(mix(c.paper, c.ink, 0.28), c.night, 0.7 - day * 0.65)),
@@ -327,48 +358,71 @@ function buildingColors(day, glow) {
   return BC;
 }
 
-// 간판 'LnL' 픽셀 글자 (3×5)
+// 간판·층 번호 픽셀 글자 (3×5)
 const GLYPH = {
-  L: ['x..', 'x..', 'x..', 'x..', 'xxx'],
-  n: ['...', 'xx.', 'x.x', 'x.x', 'x.x'],
+  1: ['.x.', 'xx.', '.x.', '.x.', 'xxx'],
+  2: ['xxx', '..x', 'xxx', 'x..', 'xxx'],
+  3: ['xxx', '..x', 'xxx', '..x', 'xxx'],
+  4: ['x.x', 'x.x', 'xxx', '..x', '..x'],
+  5: ['xxx', 'x..', 'xxx', '..x', 'xxx'],
+  6: ['xxx', 'x..', 'xxx', 'x.x', 'xxx'],
+  7: ['xxx', '..x', '..x', '.x.', '.x.'],
+  8: ['xxx', 'x.x', 'xxx', 'x.x', 'xxx'],
+  9: ['xxx', 'x.x', 'xxx', '..x', 'xxx'],
+  C: ['xxx', 'x..', 'x..', 'x..', 'xxx'],
+  D: ['xx.', 'x.x', 'x.x', 'x.x', 'xx.'],
 };
-function drawGlyph(g, ch, x, y) {
-  GLYPH[ch].forEach((row, j) => {
-    for (let i = 0; i < 3; i++) if (row[i] === 'x') g.fillRect(x + i, y + j, 1, 1);
+function drawText(g, text, x, y) {
+  [...text].forEach((ch, k) => {
+    GLYPH[ch].forEach((row, j) => {
+      for (let i = 0; i < 3; i++) if (row[i] === 'x') g.fillRect(x + k * 4 + i, y + j, 1, 1);
+    });
   });
 }
 
 function drawBuilding(g, b) {
   const { bx, by } = view;
   const R = (x, y, w, h, color) => { g.fillStyle = color; g.fillRect(bx + x, by + y, w, h); };
+  const H = PODIUM_Y - FLOOR_TOP;
 
-  // 옥상 간판
-  R(34, 7, 1, 3, b.outline);
-  R(45, 7, 1, 3, b.outline);
-  R(32, 0, 16, 7, b.outline);
-  R(33, 1, 14, 5, b.signBg);
-  g.fillStyle = b.signText;
-  drawGlyph(g, 'L', bx + 35, by + 1);
-  drawGlyph(g, 'n', bx + 39, by + 1);
-  drawGlyph(g, 'L', bx + 43, by + 1);
+  for (const t of TOWERS) {
+    const x = t.x;
+    // 옥상 간판 '919C' / '919D'
+    const sx = x + Math.floor((TOWER_W - 19) / 2);
+    R(sx + 3, 7, 1, 2, b.outline);
+    R(sx + 15, 7, 1, 2, b.outline);
+    R(sx, 0, 19, 7, b.outline);
+    R(sx + 1, 1, 17, 5, b.signBg);
+    g.fillStyle = b.signText;
+    drawText(g, `919${t.dorm}`, bx + sx + 2, by + 1);
 
-  // 지붕 난간과 벽
-  R(-1, 9, 82, 1, b.outline);
-  R(-1, 10, 82, 2, b.roof);
-  R(0, 12, 80, 58, b.wall);
-  R(76, 12, 4, 58, b.wallShade);
-  R(39, 12, 2, 44, b.wallShade);
-  for (let f = 1; f <= 4; f++) R(0, FLOOR_TOP + f * FLOOR_H - 1, 80, 1, b.wallShade);
-  R(0, 56, 80, 14, b.base);
-  R(-1, 12, 1, 58, b.outline);
-  R(80, 12, 1, 58, b.outline);
+    // 난간과 벽
+    R(x - 1, 9, TOWER_W + 2, 1, b.outline);
+    R(x - 1, 10, TOWER_W + 2, 2, b.roof);
+    R(x, 12, TOWER_W, H, b.wall);
+    R(x + TOWER_W - 3, 12, 3, H, b.wallShade);
+    R(x + 20, 12, 1, H, b.wallShade);
+    R(x - 1, 12, 1, H, b.outline);
+    R(x + TOWER_W, 12, 1, H, b.outline);
+  }
 
-  // 분리수거장 별채
-  R(82, 56, 18, 2, b.annexRoof);
-  R(83, 58, 16, 12, b.annex);
-  R(83, 58, 16, 1, b.annexRoof);
-  R(82, 58, 1, 12, b.outline);
-  R(99, 58, 1, 12, b.outline);
+  // 층 번호 (C동 왼쪽, D동 오른쪽)
+  g.fillStyle = b.floorNum;
+  for (let f = 1; f <= FLOORS; f++) {
+    drawText(g, String(f), bx - 5, by + floorTop(f) + 2);
+    drawText(g, String(f), bx + BUILDING.w + 2, by + floorTop(f) + 2);
+  }
+
+  // 저층부 (공용 공간)
+  R(-2, PODIUM_Y, BUILDING.w + 4, 1, b.outline);
+  R(-2, PODIUM_Y + 1, BUILDING.w + 4, 1, b.roof);
+  R(-1, PODIUM_Y + 2, BUILDING.w + 2, 14, b.base);
+  R(-2, PODIUM_Y + 2, 1, 14, b.outline);
+  R(BUILDING.w + 1, PODIUM_Y + 2, 1, 14, b.outline);
+  for (const [room, sx] of FACILITIES) {
+    R(sx, PODIUM_Y + 2, SECTION_W - 1, 1, css(colors.room[room]));
+    R(sx + SECTION_W - 1, PODIUM_Y + 2, 1, 14, b.wallShade);
+  }
 
   // 창틀과 창턱
   for (const w of WINDOWS) {
@@ -376,14 +430,14 @@ function drawBuilding(g, b) {
     R(w.x - 1, w.y + w.h + 1, w.w + 2, 1, b.sill);
   }
 
-  // 입구·벽등·계단
-  R(33, 57, 14, 1, b.roof);
-  R(35, 58, 10, 12, b.outline);
-  R(36, 59, 8, 11, b.door);
-  R(40, 59, 1, 11, b.outline);
-  R(33, 60, 1, 2, b.lamp);
-  R(46, 60, 1, 2, b.lamp);
-  R(34, 69, 12, 1, b.sill);
+  // 가운데 입구·벽등·계단
+  R(40, PODIUM_Y + 3, 8, 1, b.roof);
+  R(41, PODIUM_Y + 4, 6, 12, b.outline);
+  R(42, PODIUM_Y + 5, 4, 11, b.door);
+  R(44, PODIUM_Y + 5, 1, 11, b.outline);
+  R(40, PODIUM_Y + 6, 1, 2, b.lamp);
+  R(47, PODIUM_Y + 6, 1, 2, b.lamp);
+  R(40, PODIUM_Y + 15, 8, 1, b.sill);
 }
 
 function drawGround(g, b) {
@@ -395,8 +449,8 @@ function drawGround(g, b) {
   // 입구에서 내려오는 길
   g.fillStyle = b.path;
   for (let y = 0; y < H - groundY; y++) {
-    const half = 6 + Math.floor(y * 0.7);
-    g.fillRect(bx + 40 - half, groundY + y, half * 2, 1);
+    const half = 4 + Math.floor(y * 0.7);
+    g.fillRect(bx + 44 - half, groundY + y, half * 2, 1);
   }
   // 나무
   const tree = (x, small) => {
@@ -411,19 +465,29 @@ function drawGround(g, b) {
     g.fillStyle = b.treeLight;
     g.fillRect(x - 2, y - trunk - crown + 1, 3, 2);
   };
-  tree(bx - 7, false);
-  if (bx + BUILDING.w + 11 < W) tree(bx + BUILDING.w + 6, true);
+  if (bx >= 12) tree(bx - 9, false);
+  if (bx + BUILDING.w + 13 < W) tree(bx + BUILDING.w + 8, true);
+}
+
+function outlineRect(g, x, y, w, h) {
+  g.fillRect(x - 1, y - 1, w + 2, 1);
+  g.fillRect(x - 1, y + h, w + 2, 1);
+  g.fillRect(x - 1, y, 1, h);
+  g.fillRect(x + w, y, 1, h);
 }
 
 function drawHover(g) {
-  const z = ZONES.find((z) => z.room === state.hover);
-  if (!z) return;
   const { bx, by } = view;
-  g.fillStyle = css(colors.room[z.room]);
-  g.fillRect(bx + z.x - 1, by + z.y - 1, z.w + 2, 1);
-  g.fillRect(bx + z.x - 1, by + z.y + z.h, z.w + 2, 1);
-  g.fillRect(bx + z.x - 1, by + z.y, 1, z.h);
-  g.fillRect(bx + z.x + z.w, by + z.y, 1, z.h);
+  const z = ZONES.find((z) => z.room === state.hover);
+  if (z) {
+    g.fillStyle = css(colors.room[z.room]);
+    outlineRect(g, bx + z.x, by + z.y, z.w, z.h);
+  }
+  const w = state.hoverKey && WINDOWS.find((w) => w.key === state.hoverKey);
+  if (w) {
+    g.fillStyle = css(colors.goldLight);
+    outlineRect(g, bx + w.x - 1, by + w.y - 1, w.w + 2, w.h + 2);
+  }
 }
 
 // ── 한 프레임 그리기: 뒤쪽(하늘~건물) → [lights.js 창문] → 앞쪽(비·눈·호버) ──

@@ -89,6 +89,13 @@
     .piece__input:focus { outline: 2px solid var(--gold); border-color: transparent; }
     .piece__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
     .piece__count { font-size: 12px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .dorm { margin-top: 16px; padding: 14px; border-radius: var(--lnl-radius); background: rgba(201, 162, 74, 0.12); }
+    .dorm__label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 15px; color: var(--gold-light); }
+    .dorm__label span { display: block; margin-top: 2px; font-weight: 400; font-size: 12px; color: var(--paper); opacity: 0.75; }
+    .dorm__row { display: flex; gap: 8px; }
+    .dorm__row .piece__input { flex: 1; min-width: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.06em; }
+    .dorm__preview { min-height: 18px; margin: 8px 0 0; font-size: 13px; }
+    .dorm__preview[data-state="error"] { color: var(--room-meetup); }
     .toast {
       position: fixed;
       left: 50%;
@@ -130,6 +137,15 @@
       <p class="live__status" aria-live="polite"><span id="arrive">내 빛이 날아가는 중…</span> · 지금 <strong id="people">1</strong>명이 함께 빛나요</p>
       <p id="banner" class="live__banner" hidden>지금 '불 켜기'를 눌러 생활관 전체를 밝혀 주세요</p>
 
+      <form id="dorm-form" class="dorm" novalidate>
+        <label class="dorm__label" for="dorm-input">내 방 불 켜기 <span>919C동 15~18호 · 919D동 19~22호 · 층과 호수를 붙여서</span></label>
+        <div class="dorm__row">
+          <input id="dorm-input" class="piece__input" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="예: 315">
+          <button type="submit" class="lnl-btn">켜기</button>
+        </div>
+        <p id="dorm-preview" class="dorm__preview" aria-live="polite"></p>
+      </form>
+
       <div class="live__actions">
         <button id="btn-light" type="button" class="lnl-btn live__light">불 켜기</button>
         <button id="btn-piece" type="button" class="lnl-btn lnl-btn--ghost" aria-expanded="false" aria-controls="piece">한 줄 남기기</button>
@@ -168,6 +184,7 @@
     import * as scene from '../main/scene.js';
     import * as lights from '../main/lights.js';
     import { createStage } from '../main/stage.js';
+    import { startDorms, bindDormForm } from '../main/dorms.js';
 
     const LNL = window.LNL;
     const $ = (id) => document.getElementById(id);
@@ -182,6 +199,14 @@
       onStats: ({ list }) => {
         $('people').textContent = list.filter((p) => p.meta && p.meta.page === 'live').length || 1;
       },
+    });
+    // 내 방 불 켜기 → 메인·발표 화면의 그 호실 창문이 켜진다
+    startDorms();
+    bindDormForm({
+      form: $('dorm-form'),
+      input: $('dorm-input'),
+      preview: $('dorm-preview'),
+      onDone: (d) => toast(`${d.label}에 불이 켜졌어요`),
     });
     setTimeout(() => { $('arrive').textContent = '내 빛이 생활관에 도착했어요'; }, 2600);
 

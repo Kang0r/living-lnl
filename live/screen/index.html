@@ -93,7 +93,7 @@
       animation: feed-in 0.8s ease-out;
     }
     .big-title[hidden] { display: none; }
-    .demo-badge { left: 50%; transform: translateX(-50%); max-width: 520px; text-align: center; }
+    .demo-badge { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); max-width: 520px; margin: 0; text-align: center; }
     @media (prefers-reduced-motion: reduce) { .feed li, .big-title { animation: none; } }
   </style>
 </head>
@@ -105,6 +105,7 @@
     <ul class="scene-stats">
       <li>참여 관객 <strong id="audience">0</strong>명</li>
       <li>불 켜기 <strong id="lights">0</strong></li>
+      <li>불 켜진 방 <strong id="dorms">0</strong></li>
       <li>응원 <strong id="cheers">0</strong></li>
     </ul>
   </header>
@@ -133,6 +134,7 @@
     import * as scene from '../../main/scene.js';
     import * as lights from '../../main/lights.js';
     import { createStage } from '../../main/stage.js';
+    import { startDorms } from '../../main/dorms.js';
 
     const LNL = window.LNL;
     const $ = (id) => document.getElementById(id);
@@ -174,12 +176,15 @@
 
     lights.startLights({
       meta: { page: 'screen' },
-      onStats: ({ list }) => {
+      onStats: ({ list, dorms }) => {
+        $('dorms').textContent = dorms;
         audience = list.filter((p) => p.meta && p.meta.page === 'live').length;
         $('audience').textContent = audience;
         paintProgress();
       },
     });
+
+    startDorms();
 
     function paintProgress() {
       $('pressed').textContent = pressed.size;
