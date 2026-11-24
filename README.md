@@ -4,8 +4,8 @@
 픽셀 아트로 그린 생활관 안에 조원들이 만든 방 앱 9개를 '방'으로 잇고,
 방에서 남긴 기록이 메인 화면의 **창문 불빛**이 됩니다.
 
-- 미리보기 (GitHub Pages): https://shawnkang64.github.io/living-lnl/
-- 관객 참여: [`/live/`](https://shawnkang64.github.io/living-lnl/live/) · 발표 화면: [`/live/screen/`](https://shawnkang64.github.io/living-lnl/live/screen/)
+- 미리보기 (GitHub Pages): https://kang0r.github.io/living-lnl/
+- 관객 참여: [`/live/`](https://kang0r.github.io/living-lnl/live/) · 발표 화면: [`/live/screen/`](https://kang0r.github.io/living-lnl/live/screen/)
 - 작업 규칙과 사양은 [`CLAUDE.md`](CLAUDE.md)를 먼저 읽어 주세요.
 
 > 지금은 Supabase 연결 전이라 **데모 모드**로 동작합니다. 기록과 접속자가 가짜로 만들어지고,
