@@ -248,8 +248,9 @@
     var DUR = 0.18;
     var start = performance.now();
 
-    function frame(now) {
-      var t = (now - start) / 1000;
+    function frame() {
+      // rAF가 주는 시각 대신 지금 시각을 쓴다 (일부 환경에서 rAF 시각이 멈춰 있음)
+      var t = (performance.now() - start) / 1000;
       ctx.clearRect(0, 0, w, h);
       var finished = true;
       for (var i = 0; i < tiles.length; i++) {

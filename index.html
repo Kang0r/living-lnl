@@ -14,7 +14,7 @@
   <canvas id="scene" class="scene-canvas" aria-hidden="true"></canvas>
 
   <header class="scene-top">
-    <h1 class="scene-title">살아있는 생활관</h1>
+    <h1 class="scene-title">살아있는 생활관 <img class="scene-logo" src="assets/lnl-logo.svg" alt="LnL" width="44" height="20"></h1>
     <p class="scene-meta"><span id="clock">--:--</span> · <span id="phase"></span> · <span id="weather">날씨 확인 중</span></p>
     <ul class="scene-stats" aria-live="polite">
       <li>지금 <strong id="stat-people">0</strong>명</li>
@@ -25,12 +25,27 @@
   </header>
 
   <footer class="scene-bottom">
-    <div id="room-tags" class="room-tags" role="group" aria-label="공용 공간 — 방 앱으로 들어가기"></div>
     <div class="scene-actions">
       <button id="dorm-btn" type="button" class="lnl-btn">내 방 불 켜기</button>
       <button id="tilt-btn" type="button" class="lnl-btn lnl-btn--ghost" hidden>기울여서 빛 움직이기</button>
     </div>
   </footer>
+
+  <!-- 건물 가운데 문 바로 아래에 붙는다 (main.js가 위치를 잡음) -->
+  <button id="enter-btn" type="button" class="lnl-btn enter-btn">들어가기</button>
+
+  <!-- 들어가기 → 공용 공간 6곳을 고르는 로비 화면 -->
+  <section id="lobby" class="lobby" hidden aria-labelledby="lobby-title">
+    <div class="lobby__inner">
+      <div class="lobby__head">
+        <button id="lobby-back" type="button" class="lnl-btn lnl-btn--ghost lobby__back">생활관으로</button>
+        <img class="scene-logo" src="assets/lnl-logo.svg" alt="LnL" width="44" height="20">
+      </div>
+      <h2 id="lobby-title" class="lobby__title">공용 공간</h2>
+      <p class="lobby__hint">들어갈 방을 고르세요</p>
+      <ul id="lobby-rooms" class="lobby__rooms"></ul>
+    </div>
+  </section>
 
   <p id="dorm-tip" class="dorm-tip" hidden></p>
   <p id="toast" class="toast" role="status" hidden></p>
