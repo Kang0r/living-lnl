@@ -115,11 +115,12 @@ export function layoutRooms() {
   }
 }
 
+// 방을 누르면 앱 개수와 상관없이 항상 고르기 패널을 띄운다. 앱은 새 탭에서 열린다.
 export function openRoom(id) {
   const room = byId[id];
   if (!room) return;
-  if (room.apps.length === 1 || !panel) {
-    window.LNL.go(room.apps[0].url);
+  if (!panel) {
+    window.open(room.apps[0].url, '_blank', 'noopener');
     return;
   }
   panel.replaceChildren();
@@ -145,20 +146,20 @@ export function openRoom(id) {
   list.className = 'room-panel__list';
   for (const app of room.apps) {
     const li = document.createElement('li');
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'room-panel__app';
-    btn.setAttribute('data-lnl-ripple', '');
+    // 새 탭 열기는 팝업 차단을 피하려고 진짜 링크(<a target="_blank">)로 만든다
+    const link = document.createElement('a');
+    link.className = 'room-panel__app';
+    link.href = app.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.setAttribute('data-lnl-ripple', '');
     const name = document.createElement('strong');
     name.textContent = app.title;
     const owner = document.createElement('span');
-    owner.textContent = app.owner;
-    btn.append(name, owner);
-    btn.addEventListener('click', () => {
-      closePanel();
-      window.LNL.go(app.url);
-    });
-    li.appendChild(btn);
+    owner.textContent = `${app.owner} · 새 탭`;
+    link.append(name, owner);
+    link.addEventListener('click', closePanel);
+    li.appendChild(link);
     list.appendChild(li);
   }
   panel.append(head, hint, list);
