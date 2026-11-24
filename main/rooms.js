@@ -60,24 +60,35 @@ export function roomAt(x, y) {
   return z ? z.room : null;
 }
 
-// 공용 공간 버튼 줄(키보드로도 누를 수 있음)과 앱 고르기 패널을 붙인다.
-// 버튼 순서는 저층부 왼쪽부터 오른쪽 순서와 같다.
-export function mountRooms(bar, dialog, { onHover } = {}) {
+// 로비 화면의 공용 공간 카드 6장과 앱 고르기 패널을 붙인다.
+// 카드 순서는 저층부 왼쪽부터 오른쪽 순서와 같다. 카드를 누르면 그 방의 앱 고르기 패널이 뜬다.
+export function mountLobby(list, dialog, { onHover } = {}) {
   panel = dialog;
   for (const z of ZONES) {
     const room = byId[z.room];
+    const li = document.createElement('li');
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'room-tag';
+    btn.className = 'lobby-room';
     btn.style.setProperty('--room', `var(--room-${room.id})`);
-    btn.textContent = room.name;
-    btn.setAttribute('aria-label', `${room.name} — ${room.apps.map((a) => a.title).join(', ')}`);
+    btn.setAttribute('data-lnl-ripple', '');
+
+    const icon = document.createElement('span');
+    icon.className = 'lobby-room__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const name = document.createElement('strong');
+    name.className = 'lobby-room__name';
+    name.textContent = room.name;
+    const apps = document.createElement('span');
+    apps.className = 'lobby-room__apps';
+    apps.textContent = room.apps.map((a) => a.title).join(' · ');
+
+    btn.append(icon, name, apps);
     btn.addEventListener('click', () => openRoom(room.id));
     btn.addEventListener('pointerenter', () => onHover && onHover(room.id));
     btn.addEventListener('pointerleave', () => onHover && onHover(null));
-    btn.addEventListener('focus', () => onHover && onHover(room.id));
-    btn.addEventListener('blur', () => onHover && onHover(null));
-    bar.appendChild(btn);
+    li.appendChild(btn);
+    list.appendChild(li);
   }
   if (panel) {
     panel.addEventListener('click', (e) => { if (e.target === panel) closePanel(); });

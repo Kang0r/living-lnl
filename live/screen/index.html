@@ -16,6 +16,9 @@
       text-shadow: 0 1px 3px rgba(20, 26, 46, 0.7);
     }
     .screen-head h1 {
+      display: flex;
+      align-items: center;
+      gap: 14px;
       margin: 0;
       font-family: var(--lnl-font-title);
       font-size: 42px;
@@ -102,7 +105,7 @@
   <canvas id="scene" class="scene-canvas" aria-hidden="true"></canvas>
 
   <header class="screen-head">
-    <h1>살아있는 생활관</h1>
+    <h1>살아있는 생활관 <img class="scene-logo" src="../../assets/lnl-logo.svg" alt="LnL" width="44" height="20"></h1>
     <ul class="scene-stats">
       <li>참여 관객 <strong id="audience">0</strong>명</li>
       <li>불 켜기 <strong id="lights">0</strong></li>
