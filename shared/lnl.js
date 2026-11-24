@@ -447,6 +447,8 @@
       });
     }
     var D = window.DeviceOrientationEvent;
+    // 터치 화면이 없는 PC에서는 기울기를 쓰지 않는다 (요즘 PC 브라우저도 권한 함수를 갖고 있음)
+    if (!navigator.maxTouchPoints) return;
     if (D && typeof D.requestPermission === 'function') {
       if (!button) return;
       button.hidden = false;
