@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>방 앱 연결 예시 — 식당</title>
+  <!-- 실제 방 앱에서는 ../ 대신 https://(통합 사이트 주소)/ 를 쓴다 -->
+  <link rel="stylesheet" href="../shared/design.css">
+  <script src="../shared/lnl.js"></script>
+  <style>
+    .demo { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+    .demo h1 { font-family: var(--lnl-font-title); font-size: 22px; }
+    .demo pre { padding: 12px; border-radius: var(--lnl-radius); background: var(--night); color: var(--paper); font-size: 12px; overflow-x: auto; }
+    .demo p { line-height: 1.6; }
+  </style>
+</head>
+<body class="lnl-page" data-room="cafeteria">
+  <main class="demo">
+    <h1>방 앱 연결 예시</h1>
+    <p>방 앱 맨 위에 공통 상단바가 붙고, 버튼을 누르면 <code>events</code>에 기록이 남아 메인 생활관의 식당 창문이 켜집니다.</p>
+    <button id="emit" type="button" class="lnl-btn">메뉴 봤어요 기록하기</button>
+    <p id="result" aria-live="polite"></p>
+    <pre>&lt;link rel="stylesheet" href="https://(통합 사이트 주소)/shared/design.css"&gt;
+&lt;script src="https://(통합 사이트 주소)/shared/lnl.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  LNL.header('식당');
+  button.onclick = () =&gt; LNL.emit('cafeteria', 'view_menu');
+&lt;/script&gt;</pre>
+  </main>
+  <script>
+    LNL.header('식당');
+    document.getElementById('emit').addEventListener('click', function () {
+      LNL.emit('cafeteria', 'view_menu').then(function (ok) {
+        document.getElementById('result').textContent = ok
+          ? '기록했어요. 메인 화면의 식당 창문을 확인해 보세요.'
+          : '기록하지 못했어요 (앱은 그대로 쓸 수 있어요).';
+      });
+    });
+  </script>
+</body>
+</html>

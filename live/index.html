@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>관객 참여 — 살아있는 생활관</title>
+  <meta name="theme-color" content="#141A2E">
+  <link rel="stylesheet" href="../shared/design.css">
+  <script src="../shared/lnl.js"></script>
+  <style>
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--night);
+      color: var(--paper);
+      font-family: var(--lnl-font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+    .live {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 0 max(24px, env(safe-area-inset-bottom));
+    }
+    .live__scene {
+      display: block;
+      width: 100%;
+      height: 46vh;
+      min-height: 260px;
+      image-rendering: pixelated;
+    }
+    .live__body { padding: 16px; }
+    .live__title {
+      margin: 0;
+      font-family: var(--lnl-font-title);
+      font-size: 22px;
+      color: var(--gold-light);
+    }
+    .live__status { margin: 6px 0 0; font-size: 14px; opacity: 0.85; }
+    .live__status strong { color: var(--gold-light); }
+    .live__banner {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border-radius: var(--lnl-radius);
+      background: var(--gold);
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .live__actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .live__actions .lnl-btn { width: 100%; min-height: 52px; }
+    .live__light { grid-column: 1 / -1; min-height: 64px !important; font-size: 18px !important; }
+    .piece {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid rgba(201, 162, 74, 0.4);
+      border-radius: var(--lnl-radius);
+    }
+    .piece[hidden] { display: none; }
+    .piece__label { display: block; margin: 0 0 8px; font-size: 13px; opacity: 0.85; }
+    .moods { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 0; border: 0; }
+    .moods legend { padding: 0; margin-bottom: 8px; font-size: 13px; opacity: 0.85; }
+    .moods label {
+      position: relative;
+      padding: 6px 12px;
+      border: 1px solid rgba(201, 162, 74, 0.5);
+      border-radius: var(--lnl-radius);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .moods input { position: absolute; opacity: 0; pointer-events: none; }
+    .moods label:has(input:checked) { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+    .moods label:has(input:focus-visible) { outline: 2px solid var(--gold-light); outline-offset: 2px; }
+    .piece__input {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 48px;
+      padding: 10px 12px;
+      border: 1px solid rgba(246, 241, 230, 0.25);
+      border-radius: var(--lnl-radius);
+      background: rgba(246, 241, 230, 0.06);
+      color: var(--paper);
+      font: inherit;
+      font-size: 16px;
+    }
+    .piece__input:focus { outline: 2px solid var(--gold); border-color: transparent; }
+    .piece__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .piece__count { font-size: 12px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      border-radius: var(--lnl-radius);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(20, 26, 46, 0.4);
+      white-space: nowrap;
+    }
+    .climax {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 12px;
+      padding: 24px;
+      background: var(--gold);
+      color: var(--ink);
+      text-align: center;
+      animation: climax-in 0.6s ease-out;
+    }
+    .climax[hidden] { display: none; }
+    .climax h2 { margin: 0; font-family: var(--lnl-font-title); font-size: 28px; }
+    .climax p { margin: 0; font-size: 15px; }
+    @keyframes climax-in { from { opacity: 0; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .climax { animation: none; } }
+  </style>
+</head>
+<body>
+  <main class="live">
+    <canvas id="scene" class="live__scene" aria-hidden="true"></canvas>
+    <div class="live__body">
+      <h1 class="live__title">내 빛이 생활관으로</h1>
+      <p class="live__status" aria-live="polite"><span id="arrive">내 빛이 날아가는 중…</span> · 지금 <strong id="people">1</strong>명이 함께 빛나요</p>
+      <p id="banner" class="live__banner" hidden>지금 '불 켜기'를 눌러 생활관 전체를 밝혀 주세요</p>
+
+      <div class="live__actions">
+        <button id="btn-light" type="button" class="lnl-btn live__light">불 켜기</button>
+        <button id="btn-piece" type="button" class="lnl-btn lnl-btn--ghost" aria-expanded="false" aria-controls="piece">한 줄 남기기</button>
+        <button id="btn-cheer" type="button" class="lnl-btn lnl-btn--ghost">응원</button>
+      </div>
+
+      <form id="piece" class="piece" hidden>
+        <fieldset class="moods">
+          <legend>지금 기분</legend>
+          <label><input type="radio" name="mood" value="기쁨" checked>기쁨</label>
+          <label><input type="radio" name="mood" value="설렘">설렘</label>
+          <label><input type="radio" name="mood" value="평온">평온</label>
+          <label><input type="radio" name="mood" value="피곤">피곤</label>
+          <label><input type="radio" name="mood" value="그럭저럭">그럭저럭</label>
+        </fieldset>
+        <label class="piece__label" for="piece-text">생활관에 남길 한 줄 (이름은 남지 않아요)</label>
+        <input id="piece-text" class="piece__input" maxlength="60" autocomplete="off" placeholder="예: 오늘 밥약 덕분에 웃었다">
+        <div class="piece__row">
+          <span id="piece-count" class="piece__count">0 / 60</span>
+          <button type="submit" class="lnl-btn">남기기</button>
+        </div>
+      </form>
+
+      <div class="live__actions">
+        <button id="tilt-btn" type="button" class="lnl-btn lnl-btn--ghost" hidden>기울여서 내 빛 움직이기</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="climax" class="climax" hidden role="status">
+    <h2>생활관 전체 점등</h2>
+    <p>여러분의 빛으로 생활관이 모두 밝아졌어요</p>
+  </div>
+
+  <script type="module">
+    import * as scene from '../main/scene.js';
+    import * as lights from '../main/lights.js';
+    import { createStage } from '../main/stage.js';
+
+    const LNL = window.LNL;
+    const $ = (id) => document.getElementById(id);
+    const live = LNL.live('lnl-live');
+
+    scene.loadColors();
+    createStage($('scene')).start();
+    LNL.weather().then((w) => scene.setWeather(w.kind));
+
+    const me = lights.startLights({
+      meta: { page: 'live' },
+      onStats: ({ list }) => {
+        $('people').textContent = list.filter((p) => p.meta && p.meta.page === 'live').length || 1;
+      },
+    });
+    setTimeout(() => { $('arrive').textContent = '내 빛이 생활관에 도착했어요'; }, 2600);
+
+    let toastTimer = 0;
+    function toast(text) {
+      let el = document.querySelector('.toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'toast';
+        el.setAttribute('role', 'status');
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.remove(), 1800);
+    }
+
+    // 같은 버튼을 너무 빨리 연타하지 않도록
+    function cooldown(btn, ms) {
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, ms);
+    }
+
+    $('btn-light').addEventListener('click', (e) => {
+      live.send('light', { id: me.id });
+      lights.flashRandom();
+      toast('불을 켰어요');
+      cooldown(e.currentTarget, 1200);
+    });
+
+    $('btn-cheer').addEventListener('click', (e) => {
+      live.send('cheer', { id: me.id });
+      lights.burst(innerWidth / 2, $('scene').clientHeight * 0.6, 18);
+      toast('응원을 보냈어요');
+      cooldown(e.currentTarget, 800);
+    });
+
+    // 한 줄 남기기 (최대 60자, pieces 테이블)
+    const form = $('piece');
+    const input = $('piece-text');
+    $('btn-piece').addEventListener('click', (e) => {
+      form.hidden = !form.hidden;
+      e.currentTarget.setAttribute('aria-expanded', String(!form.hidden));
+      if (!form.hidden) input.focus();
+    });
+    input.addEventListener('input', () => { $('piece-count').textContent = `${input.value.length} / 60`; });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim().slice(0, 60);
+      if (!text) { input.focus(); return; }
+      const mood = form.elements.mood.value;
+      const submit = form.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      const w = await LNL.weather();
+      let ok = true;
+      const client = await LNL.client();
+      if (client) {
+        const { error } = await client.from('pieces').insert({ mood, weather: w.kind, text });
+        ok = !error;
+      }
+      submit.disabled = false;
+      if (!ok) { toast('잠시 뒤 다시 시도해 주세요'); return; }
+      live.send('piece', { text, mood });
+      input.value = '';
+      $('piece-count').textContent = '0 / 60';
+      form.hidden = true;
+      $('btn-piece').setAttribute('aria-expanded', 'false');
+      toast('생활관 벽에 남겼어요');
+    });
+
+    // 기울이면 내 빛이 움직인다 (발표 화면에는 0.2초마다 보낸다)
+    let lastSent = 0;
+    LNL.tilt(({ x, y }) => {
+      lights.moveGuest(me.id, x, y);
+      const t = performance.now();
+      if (t - lastSent > 200) {
+        lastSent = t;
+        live.send('move', { id: me.id, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 });
+      }
+    }, $('tilt-btn'));
+
+    // 발표 화면이 보내는 신호
+    live.on('stage', ({ on }) => { $('banner').hidden = !on; if (!on) lights.setClimax(false); });
+    live.on('climax', ({ on }) => {
+      lights.setClimax(on !== false);
+      $('climax').hidden = on === false;
+      if (on !== false) setTimeout(() => { $('climax').hidden = true; }, 5000);
+    });
+  </script>
+</body>
+</html>

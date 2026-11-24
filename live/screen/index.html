@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>발표 화면 — 살아있는 생활관</title>
+  <link rel="stylesheet" href="../../shared/design.css">
+  <link rel="stylesheet" href="../../main/main.css">
+  <script src="../../shared/lnl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <style>
+    .screen-head {
+      position: fixed;
+      top: 24px;
+      left: 28px;
+      text-shadow: 0 1px 3px rgba(20, 26, 46, 0.7);
+    }
+    .screen-head h1 {
+      margin: 0;
+      font-family: var(--lnl-font-title);
+      font-size: clamp(26px, 3vw, 44px);
+      color: var(--gold-light);
+    }
+    .screen-head .scene-stats { margin-top: 12px; font-size: 15px; }
+    .qr {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 200px;
+      padding: 14px;
+      box-sizing: border-box;
+      border-radius: var(--lnl-radius);
+      background: var(--paper);
+      color: var(--ink);
+      text-align: center;
+    }
+    .qr canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+    .qr strong { display: block; margin-top: 8px; font-size: 15px; }
+    .qr small { display: block; margin-top: 4px; font-size: 11px; opacity: 0.7; word-break: break-all; }
+    .control {
+      position: fixed;
+      left: 24px;
+      bottom: 24px;
+      display: grid;
+      gap: 8px;
+      max-width: 320px;
+    }
+    .control__progress {
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: var(--lnl-radius);
+      background: rgba(20, 26, 46, 0.8);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .control__progress strong { color: var(--gold-light); }
+    .control__bar { height: 4px; margin-top: 6px; background: rgba(246, 241, 230, 0.15); border-radius: 2px; overflow: hidden; }
+    .control__bar span { display: block; height: 100%; width: 0; background: var(--gold-light); transition: width 0.3s; }
+    .control__keys { margin: 0; font-size: 11px; opacity: 0.6; }
+    .feed {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      display: grid;
+      gap: 8px;
+      width: min(360px, 32vw);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feed li {
+      padding: 10px 14px;
+      border-left: 3px solid var(--room-wall);
+      border-radius: 0 var(--lnl-radius) var(--lnl-radius) 0;
+      background: rgba(20, 26, 46, 0.8);
+      font-size: 16px;
+      line-height: 1.45;
+      animation: feed-in 0.4s ease-out;
+    }
+    .feed li small { display: block; margin-top: 2px; font-size: 12px; color: var(--gold-light); }
+    @keyframes feed-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    .big-title {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      pointer-events: none;
+      font-family: var(--lnl-font-title);
+      font-size: clamp(40px, 7vw, 96px);
+      font-weight: 700;
+      color: var(--gold-light);
+      text-shadow: 0 0 24px rgba(201, 162, 74, 0.8);
+      animation: feed-in 0.8s ease-out;
+    }
+    .big-title[hidden] { display: none; }
+    .demo-badge { left: 50%; transform: translateX(-50%); max-width: 520px; text-align: center; }
+    @media (prefers-reduced-motion: reduce) { .feed li, .big-title { animation: none; } }
+  </style>
+</head>
+<body class="scene-page">
+  <canvas id="scene" class="scene-canvas" aria-hidden="true"></canvas>
+
+  <header class="screen-head">
+    <h1>살아있는 생활관</h1>
+    <ul class="scene-stats">
+      <li>참여 관객 <strong id="audience">0</strong>명</li>
+      <li>불 켜기 <strong id="lights">0</strong></li>
+      <li>응원 <strong id="cheers">0</strong></li>
+    </ul>
+  </header>
+
+  <ul id="feed" class="feed" aria-live="polite"></ul>
+
+  <div class="control">
+    <button id="stage-btn" type="button" class="lnl-btn">전체 점등 단계 시작</button>
+    <p class="control__progress" id="progress" hidden>
+      불 켠 관객 <strong id="pressed">0</strong> / <strong id="goal">0</strong>명
+      <span class="control__bar"><span id="bar"></span></span>
+    </p>
+    <p class="control__keys">스페이스: 단계 켜기·끄기 · Enter: 바로 전체 점등 · R: 처음으로</p>
+  </div>
+
+  <aside class="qr">
+    <canvas id="qr" width="200" height="200" aria-label="관객 참여 QR 코드"></canvas>
+    <strong>휴대폰으로 참여하기</strong>
+    <small id="qr-url"></small>
+  </aside>
+
+  <p id="big" class="big-title" hidden>생활관 전체 점등</p>
+  <p id="demo-badge" class="demo-badge" hidden>데모 모드 · 같은 브라우저의 다른 탭에서 ../ (관객 화면)을 열어 시험하세요</p>
+
+  <script type="module">
+    import * as scene from '../../main/scene.js';
+    import * as lights from '../../main/lights.js';
+    import { createStage } from '../../main/stage.js';
+
+    const LNL = window.LNL;
+    const $ = (id) => document.getElementById(id);
+    const live = LNL.live('lnl-live');
+
+    scene.loadColors();
+    createStage($('scene')).start();
+    LNL.weather().then((w) => scene.setWeather(w.kind));
+    if (LNL.isDemo) $('demo-badge').hidden = false;
+
+    // QR 코드 → /live
+    const liveUrl = new URL('../', location.href).href;
+    $('qr-url').textContent = liveUrl.replace(/^https?:\/\//, '');
+    if (window.qrcode) {
+      const qr = window.qrcode(0, 'M');
+      qr.addData(liveUrl);
+      qr.make();
+      const n = qr.getModuleCount();
+      const c = $('qr');
+      const cell = Math.floor(200 / (n + 2));
+      c.width = c.height = cell * (n + 2);
+      const g = c.getContext('2d');
+      const cs = getComputedStyle(document.documentElement);
+      g.fillStyle = cs.getPropertyValue('--paper').trim();
+      g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = cs.getPropertyValue('--ink').trim();
+      for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) {
+        if (qr.isDark(r, k)) g.fillRect((k + 1) * cell, (r + 1) * cell, cell, cell);
+      }
+    }
+
+    // 상태
+    let audience = 0;
+    let lightTotal = 0;
+    let cheerTotal = 0;
+    let stageOn = false;
+    let climaxed = false;
+    const pressed = new Set();
+
+    lights.startLights({
+      meta: { page: 'screen' },
+      onStats: ({ list }) => {
+        audience = list.filter((p) => p.meta && p.meta.page === 'live').length;
+        $('audience').textContent = audience;
+        paintProgress();
+      },
+    });
+
+    function paintProgress() {
+      $('pressed').textContent = pressed.size;
+      $('goal').textContent = audience;
+      $('bar').style.width = audience ? `${Math.min(100, (pressed.size / audience) * 100)}%` : '0';
+    }
+
+    function setStage(on) {
+      stageOn = on;
+      $('stage-btn').textContent = on ? '전체 점등 단계 끝내기' : '전체 점등 단계 시작';
+      $('progress').hidden = !on;
+      live.send('stage', { on });
+      if (!on) reset();
+      paintProgress();
+    }
+
+    function climax() {
+      if (climaxed) return;
+      climaxed = true;
+      lights.setClimax(true);
+      live.send('climax', { on: true });
+      $('big').hidden = false;
+      setTimeout(() => { $('big').hidden = true; }, 6000);
+    }
+
+    function reset() {
+      climaxed = false;
+      pressed.clear();
+      lights.setClimax(false);
+      live.send('climax', { on: false });
+      $('big').hidden = true;
+      paintProgress();
+    }
+
+    // 늦게 들어온 관객도 단계 안내를 받도록 5초마다 다시 알린다
+    setInterval(() => { if (stageOn) live.send('stage', { on: true }); }, 5000);
+
+    $('stage-btn').addEventListener('click', () => setStage(!stageOn));
+    document.addEventListener('keydown', (e) => {
+      if (e.target.closest && e.target.closest('button') && e.key === ' ') return;
+      if (e.key === ' ') { e.preventDefault(); setStage(!stageOn); }
+      else if (e.key === 'Enter') climax();
+      else if (e.key === 'r' || e.key === 'R') { setStage(false); }
+    });
+
+    // 관객 신호
+    live.on('light', ({ id }) => {
+      lightTotal++;
+      $('lights').textContent = lightTotal;
+      lights.flashRandom();
+      if (stageOn && id) {
+        pressed.add(id);
+        paintProgress();
+        if (audience > 0 && pressed.size >= audience) climax();
+      }
+    });
+    live.on('cheer', () => {
+      cheerTotal++;
+      $('cheers').textContent = cheerTotal;
+      lights.burst(innerWidth * (0.25 + Math.random() * 0.5), innerHeight * (0.45 + Math.random() * 0.3), 24);
+    });
+    live.on('move', ({ id, x, y }) => lights.moveGuest(id, x, y));
+    live.on('piece', ({ text, mood }) => {
+      if (!text) return;
+      const li = document.createElement('li');
+      li.textContent = String(text).slice(0, 60);
+      if (mood) {
+        const small = document.createElement('small');
+        small.textContent = String(mood).slice(0, 10);
+        li.appendChild(small);
+      }
+      const feed = $('feed');
+      feed.prepend(li);
+      while (feed.children.length > 5) feed.lastElementChild.remove();
+      setTimeout(() => li.remove(), 20000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+/* 메인 장면 화면 (index.html, live/screen) 전용 스타일 */
+html, body { height: 100%; }
+.scene-page {
+  margin: 0;
+  overflow: hidden;
+  background: var(--night);
+  color: var(--paper);
+  font-family: var(--lnl-font-body);
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+.scene-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* 위쪽 제목과 정보 */
+.scene-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: max(16px, env(safe-area-inset-top)) 16px 0;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(20, 26, 46, 0.6);
+}
+.scene-title {
+  margin: 0;
+  font-family: var(--lnl-font-title);
+  font-weight: 700;
+  font-size: clamp(22px, 6vw, 34px);
+  letter-spacing: 0.02em;
+  color: var(--gold-light);
+}
+.scene-meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.scene-stats {
+  display: inline-flex;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.scene-stats li {
+  padding: 4px 10px;
+  border: 1px solid rgba(201, 162, 74, 0.5);
+  border-radius: var(--lnl-radius);
+  background: rgba(20, 26, 46, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.scene-stats strong { color: var(--gold-light); font-weight: 700; }
+
+/* 방 이름표 (건물 위에 겹쳐진 버튼) */
+.room-tags {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.room-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: auto;
+  padding: 3px 8px 3px 6px;
+  border: 0;
+  border-left: 3px solid var(--room);
+  border-radius: 0 var(--lnl-radius) var(--lnl-radius) 0;
+  background: rgba(20, 26, 46, 0.78);
+  color: var(--paper);
+  font-family: var(--lnl-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.88;
+  transition: opacity 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.room-tag--flip {
+  padding: 3px 6px 3px 8px;
+  border-left: 0;
+  border-right: 3px solid var(--room);
+  border-radius: var(--lnl-radius) 0 0 var(--lnl-radius);
+}
+@media (min-width: 900px) {
+  .room-tag { font-size: 13px; padding-top: 5px; padding-bottom: 5px; }
+}
+.room-tag:hover,
+.room-tag:focus-visible {
+  opacity: 1;
+  background: var(--night);
+  outline: 1px solid var(--room);
+}
+
+/* 아래쪽 */
+.scene-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+.scene-bottom > * { pointer-events: auto; }
+.scene-hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+  text-shadow: 0 1px 2px rgba(20, 26, 46, 0.6);
+}
+
+.demo-badge {
+  position: fixed;
+  left: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--lnl-radius);
+  background: rgba(20, 26, 46, 0.8);
+  color: var(--gold-light);
+  font-size: 11px;
+  box-sizing: border-box;
+}
+
+/* 앱 고르기 패널 */
+.room-panel {
+  width: min(360px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 18px;
+  border: 0;
+  border-top: 4px solid var(--room);
+  border-radius: var(--lnl-radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--lnl-font-body);
+  box-shadow: 0 8px 28px rgba(20, 26, 46, 0.35);
+}
+.room-panel::backdrop { background: rgba(20, 26, 46, 0.6); }
+.room-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.room-panel__title {
+  margin: 0;
+  font-family: var(--lnl-font-title);
+  font-size: 20px;
+}
+.room-panel__close {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(34, 32, 28, 0.2);
+  border-radius: var(--lnl-radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.room-panel__hint { margin: 6px 0 14px; font-size: 13px; opacity: 0.7; }
+.room-panel__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.room-panel__app {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border: 1px solid rgba(34, 32, 28, 0.12);
+  border-left: 4px solid var(--room);
+  border-radius: var(--lnl-radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.room-panel__app:hover,
+.room-panel__app:focus-visible { background: rgba(201, 162, 74, 0.14); outline: none; }
+.room-panel__app strong { font-size: 15px; }
+.room-panel__app span { font-size: 12px; opacity: 0.65; white-space: nowrap; }
+
+/* 인트로 */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--night);
+  transition: opacity 0.4s ease;
+}
+.intro canvas { width: 100%; height: 100%; display: block; }
+.intro--out { opacity: 0; pointer-events: none; }
+.intro__skip {
+  position: absolute;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  min-height: 36px;
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-tag, .intro { transition: none; }
+}
