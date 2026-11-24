@@ -14,7 +14,7 @@ export function parseDorm(text) {
     .replace(/\s|-|동|호|층/g, '')
     .replace(/^919(?=[CD])/, '');
   const m = s.match(/^([CD])?(\d)(\d{2})$/);
-  if (!m) return { error: '층과 호수를 붙여 세 자리로 써 주세요 (예: 315)' };
+  if (!m) return { error: '층과 호수를 붙여 세 자리로 써 주세요 (예: 215)' };
   const floor = Number(m[2]);
   const num = Number(m[3]);
   const dorm = num >= 15 && num <= 18 ? 'C' : num >= 19 && num <= 22 ? 'D' : null;

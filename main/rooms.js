@@ -115,6 +115,7 @@ export function openRoom(id) {
   list.className = 'room-panel__list';
   for (const app of room.apps) {
     const li = document.createElement('li');
+    li.className = 'room-panel__item';
     // 새 탭 열기는 팝업 차단을 피하려고 진짜 링크(<a target="_blank">)로 만든다
     const link = document.createElement('a');
     link.className = 'room-panel__app';
@@ -122,13 +123,23 @@ export function openRoom(id) {
     link.target = '_blank';
     link.rel = 'noopener';
     link.setAttribute('data-lnl-ripple', '');
-    const name = document.createElement('strong');
-    name.textContent = app.title;
-    const owner = document.createElement('span');
-    owner.textContent = `${app.owner} · 새 탭`;
-    link.append(name, owner);
+    link.textContent = app.title;
     link.addEventListener('click', closePanel);
-    li.appendChild(link);
+
+    // [만든이] 버튼을 누르면 그 자리에 만든 사람 이름이 나온다 (다시 누르면 접힘)
+    const maker = document.createElement('button');
+    maker.type = 'button';
+    maker.className = 'room-panel__maker';
+    maker.textContent = '만든이';
+    maker.setAttribute('aria-expanded', 'false');
+    maker.setAttribute('aria-label', `${app.title} 만든이 보기`);
+    maker.addEventListener('click', () => {
+      const open = maker.getAttribute('aria-expanded') !== 'true';
+      maker.setAttribute('aria-expanded', String(open));
+      maker.textContent = open ? app.owner : '만든이';
+    });
+
+    li.append(link, maker);
     list.appendChild(li);
   }
   panel.append(head, hint, list);

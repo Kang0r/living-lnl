@@ -147,7 +147,8 @@ LnL 생활관을 미디어아트로 그린 **메인 화면** 안에 조원들이
 | `--room-lounge` | #4FB3BF | 라운지 |
 
 - 새 색을 만들지 말고 위 변수만 쓴다.
-- 글꼴: 본문 Pretendard, 제목 Noto Serif KR
+- 글꼴: 메인 생활관·관객 참여 화면은 픽셀 글꼴 **갈무리**(본문 Galmuri11, 제목 Galmuri14 — `--lnl-font-pixel`, `--lnl-font-pixel-title`).
+  방 앱 공통(`--lnl-font-body`, `--lnl-font-title`)은 본문 Pretendard, 제목 Noto Serif KR 그대로 둔다.
 - 모서리 8px, 그림자는 아주 옅게
 - 장식 문양은 두 가지만 쓴다: 사각·원 **모자이크**, **소용돌이** 곡선
 - 콘셉트: 빛의 시어터 《클림트, 골드 인 모션》처럼 어두운 바탕 위로 금빛이 흐르고 금박 문양이 움직이며 장면이 바뀐다.
